@@ -1,0 +1,35 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: pastebin-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    # MongoDB is only reachable internally — not exposed to the host
+    expose:
+      - "27017"
+
+  server:
+    build: ./server
+    container_name: pastebin-server
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DB: pastebin
+      PORT: 3000
+    expose:
+      - "3000"
+    depends_on:
+      - mongodb
+
+  client:
+    build: ./client
+    container_name: pastebin-client
+    restart: unless-stopped
+    ports:
+      - "80:80"       # ← change to "443:443" once you add SSL / a reverse proxy
+    depends_on:
+      - server
+
+volumes:
+  mongodb_data:
