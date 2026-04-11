@@ -5,7 +5,6 @@ services:
     restart: unless-stopped
     volumes:
       - mongodb_data:/data/db
-    # MongoDB is only reachable internally — not exposed to the host
     expose:
       - "27017"
 
@@ -26,10 +25,26 @@ services:
     build: ./client
     container_name: pastebin-client
     restart: unless-stopped
-    ports:
-      - "80:80"       # ← change to "443:443" once you add SSL / a reverse proxy
+    expose:
+      - "80"
     depends_on:
       - server
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: pastebin-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - client
+
 volumes:
   mongodb_data:
+  caddy_data:
+  caddy_config:
