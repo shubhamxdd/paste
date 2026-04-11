@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Lock, FileCode, Link2 } from 'lucide-react';
+import FileUploadZone from '@/components/FileUploadZone';
 
 const LANGUAGES = [
   'plaintext', 'javascript', 'typescript', 'python', 'rust', 'go',
@@ -25,6 +26,14 @@ export default function Home() {
   const [customId, setCustomId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleFile = (fileContent: string, detectedLang: string, filename: string) => {
+    setContent(fileContent);
+    setLanguage(detectedLang);
+    if (!title) {
+      setTitle(filename.replace(/\.[^.]+$/, ''));
+    }
+  };
 
   const customIdValid = customId === '' || CUSTOM_ID_RE.test(customId);
 
@@ -104,6 +113,9 @@ export default function Home() {
                 </select>
               </div>
             </div>
+
+            {/* File upload */}
+            <FileUploadZone onFile={handleFile} />
 
             {/* Content */}
             <div className="space-y-1.5">
