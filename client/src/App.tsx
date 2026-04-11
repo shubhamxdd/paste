@@ -7,6 +7,7 @@ import PasteView from './pages/PasteView';
 import SearchPage from './pages/SearchPage';
 import GistNew from './pages/GistNew';
 import GistView from './pages/GistView';
+import StatusPage from './pages/StatusPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/gists/new" element={<GistNew />} />
             <Route path="/gists/:id" element={<GistView />} />
+            <Route path="/status" element={<StatusPage />} />
           </Routes>
         </div>
       </ErrorBoundary>

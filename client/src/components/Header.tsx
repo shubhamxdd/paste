@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Moon, Sun, Code2, Plus, Search, Layers } from 'lucide-react';
+import { Moon, Sun, Code2, Plus, Search, Layers, Activity } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
 
@@ -51,6 +51,12 @@ export default function Header() {
             <Link to="/gists/new">
               <Layers className="h-4 w-4 mr-1.5" />
               New Gist
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+            <Link to="/status">
+              <Activity className="h-4 w-4 mr-1.5" />
+              Status
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
