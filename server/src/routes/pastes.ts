@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { getDb } from '../db/client';
 import { generateId } from '../lib/id';
+import logger from '../lib/logger';
 
 interface PasteDoc {
   _id: string;
@@ -50,7 +51,7 @@ router.get('/', async (req: Request, res: Response) => {
       limit,
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -89,7 +90,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (err instanceof Error && 'code' in err && (err as { code: number }).code === 11000) {
       return res.status(409).json({ error: 'This custom URL is already taken' });
     }
-    console.error(err);
+    logger.error({ err });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -122,7 +123,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       protected: false,
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -156,7 +157,7 @@ router.post('/:id/unlock', async (req: Request, res: Response) => {
       protected: true,
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -184,7 +185,7 @@ router.get('/:id/raw', async (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     return res.send(paste.content);
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     return res.status(500).send('Internal server error');
   }
 });

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getDb } from '../db/client';
 import { generateId } from '../lib/id';
+import logger from '../lib/logger';
 
 interface CollectionDoc {
   _id: string;
@@ -37,7 +38,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     return res.status(201).json({ id });
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -89,7 +90,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       pastes,
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
