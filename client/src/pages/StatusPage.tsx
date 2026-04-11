@@ -159,8 +159,12 @@ export default function StatusPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <Badge
-                variant={data?.mongodb === 'connected' ? 'default' : 'destructive'}
-                className="text-sm px-3 py-1"
+                variant={data?.mongodb === 'connected' ? 'default' : 'secondary'}
+                className={`text-sm px-3 py-1 ${
+                  data?.mongodb === 'connected'
+                    ? ''
+                    : 'bg-destructive/20 text-destructive'
+                }`}
               >
                 {data?.mongodb === 'connected' ? 'Connected' : 'Unreachable'}
               </Badge>
