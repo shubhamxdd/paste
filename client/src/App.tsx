@@ -21,7 +21,7 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/gists/new" element={<GistNew />} />
             <Route path="/gists/:id" element={<GistView />} />
-            <Route path="/status" element={<StatusPage />} />
+            {/* <Route path="/status" element={<StatusPage />} /> */}
           </Routes>
         </div>
       </ErrorBoundary>
