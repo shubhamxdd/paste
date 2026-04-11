@@ -1,0 +1,89 @@
+import { Router, Request, Response } from 'express';
+import { getDb } from '../db/client';
+import { generateId } from '../lib/id';
+
+interface CollectionDoc {
+  _id: string;
+  title: string;
+  paste_ids: string[];
+  created_at: Date;
+}
+
+const router = Router();
+const collections = () => getDb().collection<CollectionDoc>('collections');
+
+// POST /api/collections — create a collection
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const { title, paste_ids } = req.body;
+
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    if (!Array.isArray(paste_ids) || paste_ids.length === 0) {
+      return res.status(400).json({ error: 'Select at least one paste' });
+    }
+    if (paste_ids.length > 20) {
+      return res.status(400).json({ error: 'Maximum 20 pastes per gist' });
+    }
+
+    const id = generateId();
+    await collections().insertOne({
+      _id: id,
+      title: title.trim(),
+      paste_ids,
+      created_at: new Date(),
+    });
+
+    return res.status(201).json({ id });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/collections/:id — get collection with populated paste data
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const collection = await collections().findOne({ _id: req.params.id });
+    if (!collection) {
+      return res.status(404).json({ error: 'Gist not found' });
+    }
+
+    const db = getDb();
+    const docs = await db
+      .collection('pastes')
+      .find({ _id: { $in: collection.paste_ids } })
+      .toArray();
+
+    // Preserve the order paste_ids were added in
+    const pasteMap = new Map(docs.map((d) => [d._id as string, d]));
+    const pastes = collection.paste_ids
+      .map((pid) => pasteMap.get(pid))
+      .filter(Boolean)
+      .map((p) => {
+        const doc = p as Record<string, unknown>;
+        const isProtected = !!doc.paraphrase;
+        return {
+          id: doc._id,
+          title: doc.title ?? null,
+          language: doc.language,
+          created_at: doc.created_at,
+          protected: isProtected,
+          ...(isProtected ? {} : { content: doc.content }),
+        };
+      });
+
+    return res.json({
+      id: collection._id,
+      title: collection.title,
+      created_at: collection.created_at,
+      pastes,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export default router;

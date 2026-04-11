@@ -9,6 +9,13 @@ let db: Db;
 export async function connectDb(): Promise<void> {
   await client.connect();
   db = client.db(process.env.MONGODB_DB || 'pastebin');
+  // Text index for full-text search on pastes
+  await db
+    .collection('pastes')
+    .createIndex(
+      { title: 'text', content: 'text' },
+      { name: 'paste_text_search', language_override: 'search_language' }
+    );
   console.log('Connected to MongoDB');
 }
 
