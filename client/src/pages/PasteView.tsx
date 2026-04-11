@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { githubGist, atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { Copy, Lock, ExternalLink, Check, Calendar, Share2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PasteView() {
   const { id } = useParams<{ id: string }>();
@@ -62,11 +63,19 @@ export default function PasteView() {
 
   if (loading) {
     return (
-      <main className="container mx-auto max-w-4xl py-10 px-4">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <span className="text-sm">Loading paste...</span>
+      <main className="container mx-auto max-w-4xl py-8 px-4">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-4 w-36" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-14" />
+          </div>
         </div>
+        <Skeleton className="h-96 w-full rounded-lg" />
       </main>
     );
   }

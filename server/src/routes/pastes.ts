@@ -18,6 +18,43 @@ const pastes = () => getDb().collection<PasteDoc>('pastes');
 
 const CUSTOM_ID_RE = /^[a-zA-Z0-9_-]{3,60}$/;
 
+// GET /api/pastes — list pastes with optional full-text search
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const q = (req.query.q as string)?.trim();
+
+    const filter: Record<string, unknown> = q ? { $text: { $search: q } } : {};
+
+    const [docs, total] = await Promise.all([
+      pastes()
+        .find(filter, { projection: { content: 0 } })
+        .sort(q ? { score: { $meta: 'textScore' } } : { created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .toArray(),
+      pastes().countDocuments(filter),
+    ]);
+
+    return res.json({
+      pastes: docs.map((d) => ({
+        id: d._id,
+        title: d.title,
+        language: d.language,
+        created_at: d.created_at,
+        protected: !!d.paraphrase,
+      })),
+      total,
+      page,
+      limit,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /api/pastes — create a paste
 router.post('/', async (req: Request, res: Response) => {
   try {

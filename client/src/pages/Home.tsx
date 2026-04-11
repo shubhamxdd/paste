@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPaste } from '@/lib/api';
+import { useRecentPastes } from '@/hooks/useRecentPastes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Lock, FileCode, Link2 } from 'lucide-react';
 import FileUploadZone from '@/components/FileUploadZone';
+import RecentPastes from '@/components/RecentPastes';
 
 const LANGUAGES = [
   'plaintext', 'javascript', 'typescript', 'python', 'rust', 'go',
@@ -19,6 +21,8 @@ const CUSTOM_ID_RE = /^[a-zA-Z0-9_-]{3,60}$/;
 
 export default function Home() {
   const navigate = useNavigate();
+  const { add: addRecent } = useRecentPastes();
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [language, setLanguage] = useState('plaintext');
@@ -27,26 +31,19 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const lines = content ? content.split('\n').length : 0;
+  const chars = content.length;
+  const customIdValid = customId === '' || CUSTOM_ID_RE.test(customId);
+
   const handleFile = (fileContent: string, detectedLang: string, filename: string) => {
     setContent(fileContent);
     setLanguage(detectedLang);
-    if (!title) {
-      setTitle(filename.replace(/\.[^.]+$/, ''));
-    }
+    if (!title) setTitle(filename.replace(/\.[^.]+$/, ''));
   };
 
-  const customIdValid = customId === '' || CUSTOM_ID_RE.test(customId);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) {
-      setError('Content cannot be empty');
-      return;
-    }
-    if (!customIdValid) {
-      setError('Custom URL may only contain letters, numbers, hyphens, and underscores (3–60 chars)');
-      return;
-    }
+  const doSubmit = async () => {
+    if (!content.trim()) { setError('Content cannot be empty'); return; }
+    if (!customIdValid) { setError('Custom URL: letters, numbers, hyphens, underscores (3–60 chars)'); return; }
     setLoading(true);
     setError('');
     try {
@@ -57,11 +54,21 @@ export default function Home() {
         paraphrase: paraphrase || undefined,
         customId: customId || undefined,
       });
+      addRecent({ id, title: title || null, language, created_at: new Date().toISOString() });
       navigate(`/p/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); doSubmit(); };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      doSubmit();
     }
   };
 
@@ -75,9 +82,7 @@ export default function Home() {
           <FileCode className="h-3.5 w-3.5" />
           <span>No account needed</span>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight mb-3">
-          Share code, instantly
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight mb-3">Share code, instantly</h1>
         <p className="text-muted-foreground text-base max-w-md mx-auto">
           Paste your code or text, get a shareable link in seconds.
           Optionally protect it with a paraphrase.
@@ -88,7 +93,7 @@ export default function Home() {
       <Card className="shadow-md">
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Title + Language row */}
+            {/* Title + Language */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2 space-y-1.5">
                 <Label htmlFor="title">Title</Label>
@@ -122,21 +127,31 @@ export default function Home() {
               <Label htmlFor="content">Content</Label>
               <Textarea
                 id="content"
-                placeholder="Paste your code or text here..."
+                placeholder="Paste your code or text here... (Ctrl+Enter to submit)"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="min-h-[320px] font-mono text-sm resize-y"
                 required
               />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  <kbd className="px-1 py-0.5 rounded border border-border bg-muted text-xs font-mono">Ctrl+Enter</kbd>
+                  {' '}to submit
+                </p>
+                {content && (
+                  <p className="text-xs text-muted-foreground">
+                    {lines} line{lines !== 1 ? 's' : ''} · {chars.toLocaleString()} char{chars !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Custom URL */}
             <div className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <Label htmlFor="customId" className="text-sm font-medium">
-                  Custom URL
-                </Label>
+                <Label htmlFor="customId" className="text-sm font-medium">Custom URL</Label>
                 <span className="text-xs text-muted-foreground ml-auto">optional</span>
               </div>
               <div className="flex items-center rounded-md border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
@@ -169,9 +184,7 @@ export default function Home() {
             <div className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                <Label htmlFor="paraphrase" className="text-sm font-medium">
-                  Paraphrase Protection
-                </Label>
+                <Label htmlFor="paraphrase" className="text-sm font-medium">Paraphrase Protection</Label>
                 <span className="text-xs text-muted-foreground ml-auto">optional</span>
               </div>
               <Input
@@ -187,9 +200,7 @@ export default function Home() {
               </p>
             </div>
 
-            {error && (
-              <p className="text-sm text-destructive font-medium">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 
             <Button type="submit" disabled={loading} className="w-full" size="lg">
               {loading ? 'Creating paste...' : 'Create Paste'}
@@ -197,6 +208,8 @@ export default function Home() {
           </form>
         </CardContent>
       </Card>
+
+      <RecentPastes />
     </main>
   );
 }

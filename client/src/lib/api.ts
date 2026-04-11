@@ -15,6 +15,28 @@ export interface CreatePasteInput {
   customId?: string;
 }
 
+export interface PasteListItem {
+  id: string;
+  title: string | null;
+  language: string;
+  created_at: string;
+  protected: boolean;
+}
+
+export interface PasteListResponse {
+  pastes: PasteListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface Collection {
+  id: string;
+  title: string;
+  created_at: string;
+  pastes: (PasteListItem & { content?: string })[];
+}
+
 const BASE = '/api/pastes';
 
 export async function createPaste(data: CreatePasteInput): Promise<{ id: string }> {
@@ -48,6 +70,48 @@ export async function unlockPaste(id: string, paraphrase: string): Promise<Paste
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Incorrect paraphrase');
+  }
+  return res.json();
+}
+
+export async function listPastes(params?: {
+  q?: string;
+  page?: number;
+  limit?: number;
+}): Promise<PasteListResponse> {
+  const query = new URLSearchParams();
+  if (params?.q) query.set('q', params.q);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const res = await fetch(`${BASE}?${query}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to list pastes');
+  }
+  return res.json();
+}
+
+export async function createCollection(data: {
+  title: string;
+  paste_ids: string[];
+}): Promise<{ id: string }> {
+  const res = await fetch('/api/collections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to create gist');
+  }
+  return res.json();
+}
+
+export async function getCollection(id: string): Promise<Collection> {
+  const res = await fetch(`/api/collections/${id}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Gist not found');
   }
   return res.json();
 }
