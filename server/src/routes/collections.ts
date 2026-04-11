@@ -50,27 +50,35 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Gist not found' });
     }
 
+    interface PasteDoc {
+      _id: string;
+      title: string | null;
+      content: string;
+      language: string;
+      paraphrase: string | null;
+      created_at: Date;
+    }
+
     const db = getDb();
     const docs = await db
-      .collection('pastes')
-      .find({ _id: { $in: collection.paste_ids } })
+      .collection<PasteDoc>('pastes')
+      .find({ _id: { $in: collection.paste_ids } } as object)
       .toArray();
 
     // Preserve the order paste_ids were added in
-    const pasteMap = new Map(docs.map((d) => [d._id as string, d]));
+    const pasteMap = new Map(docs.map((d) => [d._id, d]));
     const pastes = collection.paste_ids
       .map((pid) => pasteMap.get(pid))
       .filter(Boolean)
       .map((p) => {
-        const doc = p as Record<string, unknown>;
-        const isProtected = !!doc.paraphrase;
+        const isProtected = !!p!.paraphrase;
         return {
-          id: doc._id,
-          title: doc.title ?? null,
-          language: doc.language,
-          created_at: doc.created_at,
+          id: p!._id,
+          title: p!.title,
+          language: p!.language,
+          created_at: p!.created_at,
           protected: isProtected,
-          ...(isProtected ? {} : { content: doc.content }),
+          ...(isProtected ? {} : { content: p!.content }),
         };
       });
 
