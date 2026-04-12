@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getDb } from '../db/client';
 import { generateId } from '../lib/id';
 import logger from '../lib/logger';
+import posthog from '../lib/posthog';
 
 interface CollectionDoc {
   _id: string;
@@ -34,6 +35,12 @@ router.post('/', async (req: Request, res: Response) => {
       title: title.trim(),
       paste_ids,
       created_at: new Date(),
+    });
+
+    posthog.capture({
+      distinctId: 'server',
+      event: 'collection created',
+      properties: { collection_id: id, paste_count: paste_ids.length },
     });
 
     return res.status(201).json({ id });
@@ -82,6 +89,12 @@ router.get('/:id', async (req: Request, res: Response) => {
           ...(isProtected ? {} : { content: p!.content }),
         };
       });
+
+    posthog.capture({
+      distinctId: 'server',
+      event: 'collection viewed',
+      properties: { collection_id: collection._id, paste_count: pastes.length },
+    });
 
     return res.json({
       id: collection._id,

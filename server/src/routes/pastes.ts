@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { getDb } from '../db/client';
 import { generateId } from '../lib/id';
 import logger from '../lib/logger';
+import posthog from '../lib/posthog';
 
 interface PasteDoc {
   _id: string;
@@ -85,6 +86,17 @@ router.post('/', async (req: Request, res: Response) => {
       created_at: new Date(),
     });
 
+    posthog.capture({
+      distinctId: 'server',
+      event: 'paste created',
+      properties: {
+        paste_id: id,
+        language,
+        protected: !!paraphrase,
+        custom_id: !!customId,
+      },
+    });
+
     return res.status(201).json({ id });
   } catch (err) {
     if (err instanceof Error && 'code' in err && (err as { code: number }).code === 11000) {
@@ -105,6 +117,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     if (paste.paraphrase) {
+      posthog.capture({
+        distinctId: 'server',
+        event: 'paste viewed',
+        properties: { paste_id: paste._id, language: paste.language, protected: true },
+      });
       return res.json({
         id: paste._id,
         title: paste.title,
@@ -114,6 +131,11 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
+    posthog.capture({
+      distinctId: 'server',
+      event: 'paste viewed',
+      properties: { paste_id: paste._id, language: paste.language, protected: false },
+    });
     return res.json({
       id: paste._id,
       title: paste.title,
@@ -147,6 +169,12 @@ router.post('/:id/unlock', async (req: Request, res: Response) => {
     if (!match) {
       return res.status(401).json({ error: 'Incorrect paraphrase' });
     }
+
+    posthog.capture({
+      distinctId: 'server',
+      event: 'paste unlocked',
+      properties: { paste_id: paste._id, language: paste.language },
+    });
 
     return res.json({
       id: paste._id,

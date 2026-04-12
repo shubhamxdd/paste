@@ -5,6 +5,7 @@ import { connectDb, getDb } from './db/client';
 import pastesRouter from './routes/pastes';
 import collectionsRouter from './routes/collections';
 import logger from './lib/logger';
+import posthog from './lib/posthog';
 
 dotenv.config();
 
@@ -64,4 +65,14 @@ async function main() {
 main().catch((err) => {
   logger.error({ err }, 'Failed to start server');
   process.exit(1);
+});
+
+process.on('SIGTERM', async () => {
+  await posthog.shutdown();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  await posthog.shutdown();
+  process.exit(0);
 });
