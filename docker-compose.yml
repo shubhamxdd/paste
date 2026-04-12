@@ -16,13 +16,19 @@ services:
       MONGODB_URI: mongodb://mongodb:27017
       MONGODB_DB: pastebin
       PORT: 3000
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY}
+      POSTHOG_HOST: ${POSTHOG_HOST}
     expose:
       - "3000"
     depends_on:
       - mongodb
 
   client:
-    build: ./client
+    build:
+      context: ./client
+      args:
+        VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY}
+        VITE_POSTHOG_HOST: ${VITE_POSTHOG_HOST}
     container_name: pastebin-client
     restart: unless-stopped
     expose:
