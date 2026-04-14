@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getPaste, unlockPaste, type Paste } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getPaste, unlockPaste, deletePaste, type Paste } from '@/lib/api';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { githubGist, atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import { Copy, Lock, ExternalLink, Check, Calendar, Share2 } from 'lucide-react';
+import { Copy, Lock, ExternalLink, Check, Calendar, Share2, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PasteView() {
   const { id } = useParams<{ id: string }>();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [paste, setPaste] = useState<Paste | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,6 +24,11 @@ export default function PasteView() {
   const [unlockError, setUnlockError] = useState('');
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [showDeletePrompt, setShowDeletePrompt] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const deleteInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -59,6 +65,27 @@ export default function PasteView() {
     navigator.clipboard.writeText(window.location.href);
     setShared(true);
     setTimeout(() => setShared(false), 2000);
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeletePrompt(true);
+    setDeleteCode('');
+    setDeleteError('');
+    setTimeout(() => deleteInputRef.current?.focus(), 50);
+  };
+
+  const handleDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !deleteCode) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deletePaste(id, deleteCode);
+      navigate('/');
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete');
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -200,8 +227,33 @@ export default function PasteView() {
               Raw
             </a>
           </Button>
+          <Button variant="outline" size="sm" onClick={handleDeleteClick} className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30">
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Delete
+          </Button>
         </div>
       </div>
+
+      {/* Delete prompt */}
+      {showDeletePrompt && (
+        <form onSubmit={handleDelete} className="flex items-center gap-2 mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+          <Input
+            ref={deleteInputRef}
+            type="password"
+            placeholder="Enter delete code"
+            value={deleteCode}
+            onChange={(e) => setDeleteCode(e.target.value)}
+            className="h-8 text-sm max-w-xs"
+          />
+          <Button type="submit" size="sm" variant="destructive" disabled={deleting || !deleteCode}>
+            {deleting ? 'Deleting...' : 'Confirm'}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setShowDeletePrompt(false)}>
+            Cancel
+          </Button>
+          {deleteError && <p className="text-xs text-destructive font-medium">{deleteError}</p>}
+        </form>
+      )}
 
       {/* Code block */}
       <Card className="overflow-hidden shadow-md">

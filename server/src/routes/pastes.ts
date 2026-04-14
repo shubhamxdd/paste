@@ -190,6 +190,39 @@ router.post('/:id/unlock', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/pastes/:id — delete a paste (requires PASTE_DELETE_CODE)
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { deleteCode } = req.body;
+    const expectedCode = process.env.PASTE_DELETE_CODE;
+
+    if (!expectedCode) {
+      return res.status(503).json({ error: 'Delete feature is not configured on this server' });
+    }
+
+    if (!deleteCode || deleteCode !== expectedCode) {
+      return res.status(401).json({ error: 'Incorrect delete code' });
+    }
+
+    const result = await pastes().deleteOne({ _id: req.params.id });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Paste not found' });
+    }
+
+    posthog.capture({
+      distinctId: 'server',
+      event: 'paste deleted',
+      properties: { paste_id: req.params.id },
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    logger.error({ err });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/pastes/:id/raw — raw text (use ?paraphrase=xxx for protected pastes)
 router.get('/:id/raw', async (req: Request, res: Response) => {
   try {

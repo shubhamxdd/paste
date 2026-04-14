@@ -91,6 +91,18 @@ export async function listPastes(params?: {
   return res.json();
 }
 
+export async function deletePaste(id: string, deleteCode: string): Promise<void> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deleteCode }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to delete paste');
+  }
+}
+
 export async function createCollection(data: {
   title: string;
   paste_ids: string[];

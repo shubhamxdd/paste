@@ -18,6 +18,7 @@ services:
       PORT: 3000
       POSTHOG_API_KEY: ${POSTHOG_API_KEY}
       POSTHOG_HOST: ${POSTHOG_HOST}
+      PASTE_DELETE_CODE: ${PASTE_DELETE_CODE}
     expose:
       - "3000"
     depends_on:
