@@ -8,7 +8,10 @@ A self-hosted pastebin with syntax highlighting, paraphrase-protected pastes, gi
 - Optional paraphrase protection — only people with the paraphrase can view the content
 - Custom URLs — choose your own slug instead of a random ID
 - Delete any paste using a secret server-side delete code
+- View count — each paste tracks how many times it has been viewed
+- Line highlighting — click any line to highlight it and update the URL hash (e.g. `/p/abc123#L42`)
 - Gists — group multiple pastes into a single shareable collection (up to 20 pastes)
+- Edit and delete gists (requires delete code)
 - Full-text search across all pastes
 - Raw paste view
 - File upload support — drag and drop a file to populate the editor
@@ -69,7 +72,7 @@ A self-hosted pastebin with syntax highlighting, paraphrase-protected pastes, gi
 
 | Variable | Required | Description |
 |---|---|---|
-| `PASTE_DELETE_CODE` | Yes | Secret code required to delete any paste |
+| `PASTE_DELETE_CODE` | Yes | Secret code required to delete or edit any paste or gist |
 | `POSTHOG_API_KEY` | No | PostHog project API key for server-side analytics |
 | `POSTHOG_HOST` | No | PostHog instance URL |
 | `VITE_POSTHOG_API_KEY` | No | PostHog project API key for client-side analytics (baked in at build time) |
@@ -133,7 +136,7 @@ Response `201`:
 
 #### `GET /api/pastes/:id`
 
-Get a paste. If protected, `content` is omitted and `protected` is `true`.
+Get a paste. If protected, `content` is omitted and `protected` is `true`. Each call increments the view count.
 
 Response `200` (unprotected):
 ```json
@@ -143,6 +146,7 @@ Response `200` (unprotected):
   "content": "console.log('hello')",
   "language": "javascript",
   "created_at": "2024-07-01T10:00:00.000Z",
+  "views": 42,
   "protected": false
 }
 ```
@@ -154,6 +158,7 @@ Response `200` (protected):
   "title": "My snippet",
   "language": "javascript",
   "created_at": "2024-07-01T10:00:00.000Z",
+  "views": 42,
   "protected": true
 }
 ```
@@ -179,6 +184,7 @@ Response `200`:
   "content": "console.log('hello')",
   "language": "javascript",
   "created_at": "2024-07-01T10:00:00.000Z",
+  "views": 42,
   "protected": true
 }
 ```
@@ -227,6 +233,13 @@ Returns the raw paste content as `text/plain`. For protected pastes, pass `?para
 
 ### Gists (Collections)
 
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/collections` | Create a gist |
+| `GET` | `/api/collections/:id` | Get a gist with all its pastes |
+| `PATCH` | `/api/collections/:id` | Update title and/or pastes (requires `deleteCode`) |
+| `DELETE` | `/api/collections/:id` | Delete a gist (requires `deleteCode`) |
+
 ---
 
 #### `POST /api/collections`
@@ -270,6 +283,55 @@ Response `200`:
       "protected": false
     }
   ]
+}
+```
+
+---
+
+#### `PATCH /api/collections/:id`
+
+Update the title and/or paste list of a gist. Requires the delete code.
+
+Body:
+```json
+{
+  "deleteCode": "your-delete-code",
+  "title": "Updated title",
+  "paste_ids": ["abc123", "def456", "ghi789"]
+}
+```
+
+Response `200`:
+```json
+{
+  "success": true
+}
+```
+
+Response `401`:
+```json
+{
+  "error": "Incorrect delete code"
+}
+```
+
+---
+
+#### `DELETE /api/collections/:id`
+
+Delete a gist. Requires the delete code. The individual pastes are not deleted.
+
+Body:
+```json
+{
+  "deleteCode": "your-delete-code"
+}
+```
+
+Response `200`:
+```json
+{
+  "success": true
 }
 ```
 

@@ -108,4 +108,84 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// PATCH /api/collections/:id — update title and/or paste list (requires PASTE_DELETE_CODE)
+router.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const { deleteCode, title, paste_ids } = req.body;
+    const expectedCode = process.env.PASTE_DELETE_CODE;
+
+    if (!expectedCode) {
+      return res.status(503).json({ error: 'Delete feature is not configured on this server' });
+    }
+    if (!deleteCode || deleteCode !== expectedCode) {
+      return res.status(401).json({ error: 'Incorrect delete code' });
+    }
+
+    const collection = await collections().findOne({ _id: req.params.id });
+    if (!collection) {
+      return res.status(404).json({ error: 'Gist not found' });
+    }
+
+    if (title !== undefined && (typeof title !== 'string' || title.trim() === '')) {
+      return res.status(400).json({ error: 'Title cannot be empty' });
+    }
+    if (paste_ids !== undefined) {
+      if (!Array.isArray(paste_ids) || paste_ids.length === 0) {
+        return res.status(400).json({ error: 'Select at least one paste' });
+      }
+      if (paste_ids.length > 20) {
+        return res.status(400).json({ error: 'Maximum 20 pastes per gist' });
+      }
+    }
+
+    const update: Record<string, unknown> = {};
+    if (title !== undefined) update.title = title.trim();
+    if (paste_ids !== undefined) update.paste_ids = paste_ids;
+
+    await collections().updateOne({ _id: req.params.id }, { $set: update });
+
+    posthog.capture({
+      distinctId: 'server',
+      event: 'collection updated',
+      properties: { collection_id: req.params.id },
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    logger.error({ err });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/collections/:id — delete a gist (requires PASTE_DELETE_CODE)
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { deleteCode } = req.body;
+    const expectedCode = process.env.PASTE_DELETE_CODE;
+
+    if (!expectedCode) {
+      return res.status(503).json({ error: 'Delete feature is not configured on this server' });
+    }
+    if (!deleteCode || deleteCode !== expectedCode) {
+      return res.status(401).json({ error: 'Incorrect delete code' });
+    }
+
+    const result = await collections().deleteOne({ _id: req.params.id });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Gist not found' });
+    }
+
+    posthog.capture({
+      distinctId: 'server',
+      event: 'collection deleted',
+      properties: { collection_id: req.params.id },
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    logger.error({ err });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

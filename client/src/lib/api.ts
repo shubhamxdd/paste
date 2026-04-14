@@ -4,6 +4,7 @@ export interface Paste {
   content?: string;
   language: string;
   created_at: string;
+  views: number;
   protected: boolean;
 }
 
@@ -126,4 +127,32 @@ export async function getCollection(id: string): Promise<Collection> {
     throw new Error(err.error || 'Gist not found');
   }
   return res.json();
+}
+
+export async function deleteCollection(id: string, deleteCode: string): Promise<void> {
+  const res = await fetch(`/api/collections/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deleteCode }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to delete gist');
+  }
+}
+
+export async function updateCollection(
+  id: string,
+  deleteCode: string,
+  data: { title?: string; paste_ids?: string[] }
+): Promise<void> {
+  const res = await fetch(`/api/collections/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deleteCode, ...data }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to update gist');
+  }
 }

@@ -9,8 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { githubGist, atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import { Copy, Lock, ExternalLink, Check, Calendar, Share2, Trash2 } from 'lucide-react';
+import { Copy, Lock, ExternalLink, Check, Calendar, Share2, Trash2, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+
+function parseLineHash(hash: string): number | null {
+  const m = hash.match(/^#?L(\d+)$/);
+  return m ? parseInt(m[1], 10) : null;
+}
 
 export default function PasteView() {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +33,9 @@ export default function PasteView() {
   const [deleteCode, setDeleteCode] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   const deleteInputRef = useRef<HTMLInputElement>(null);
+  const highlightRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -37,6 +44,21 @@ export default function PasteView() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Read hash on load and on hash change
+  useEffect(() => {
+    const read = () => setHighlightedLine(parseLineHash(window.location.hash));
+    read();
+    window.addEventListener('hashchange', read);
+    return () => window.removeEventListener('hashchange', read);
+  }, []);
+
+  // Scroll to highlighted line after paste loads
+  useEffect(() => {
+    if (highlightedLine && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightedLine, paste]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +108,12 @@ export default function PasteView() {
       setDeleteError(err instanceof Error ? err.message : 'Failed to delete');
       setDeleting(false);
     }
+  };
+
+  const handleLineClick = (lineNumber: number) => {
+    const newHash = `L${lineNumber}`;
+    window.location.hash = newHash;
+    setHighlightedLine(lineNumber);
   };
 
   if (loading) {
@@ -166,6 +194,7 @@ export default function PasteView() {
   }
 
   const hlStyle = theme === 'dark' ? atomOneDark : githubGist;
+  const highlightBg = theme === 'dark' ? 'rgba(255,255,100,0.08)' : 'rgba(255,220,0,0.2)';
 
   return (
     <main className="container mx-auto max-w-4xl py-8 px-4">
@@ -189,6 +218,10 @@ export default function PasteView() {
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {new Date(paste.created_at).toLocaleString()}
+            </span>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              {(paste.views ?? 0).toLocaleString()} view{paste.views !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -261,6 +294,20 @@ export default function PasteView() {
           language={paste.language === 'plaintext' ? 'text' : paste.language}
           style={hlStyle}
           showLineNumbers
+          wrapLines
+          lineProps={(lineNumber) => {
+            const isHighlighted = lineNumber === highlightedLine;
+            return {
+              id: `L${lineNumber}`,
+              ref: isHighlighted ? (el: HTMLElement | null) => { highlightRef.current = el; } : undefined,
+              onClick: () => handleLineClick(lineNumber),
+              style: {
+                display: 'block',
+                cursor: 'pointer',
+                backgroundColor: isHighlighted ? highlightBg : 'transparent',
+              },
+            };
+          }}
           customStyle={{
             margin: 0,
             borderRadius: '0.5rem',
@@ -279,6 +326,17 @@ export default function PasteView() {
           {paste.content ?? ''}
         </SyntaxHighlighter>
       </Card>
+      {highlightedLine && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Line {highlightedLine} highlighted —{' '}
+          <button
+            className="underline hover:text-foreground"
+            onClick={() => { window.location.hash = ''; setHighlightedLine(null); }}
+          >
+            clear
+          </button>
+        </p>
+      )}
     </main>
   );
 }

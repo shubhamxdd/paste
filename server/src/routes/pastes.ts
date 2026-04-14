@@ -12,6 +12,7 @@ interface PasteDoc {
   language: string;
   paraphrase: string | null;
   created_at: Date;
+  views: number;
 }
 
 const router = Router();
@@ -84,6 +85,7 @@ router.post('/', async (req: Request, res: Response) => {
       language,
       paraphrase: hashedParaphrase,
       created_at: new Date(),
+      views: 0,
     });
 
     posthog.capture({
@@ -110,7 +112,11 @@ router.post('/', async (req: Request, res: Response) => {
 // GET /api/pastes/:id — get paste (omits content if protected)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const paste = await pastes().findOne({ _id: req.params.id });
+    const paste = await pastes().findOneAndUpdate(
+      { _id: req.params.id },
+      { $inc: { views: 1 } },
+      { returnDocument: 'after' }
+    );
 
     if (!paste) {
       return res.status(404).json({ error: 'Paste not found' });
@@ -127,6 +133,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         title: paste.title,
         language: paste.language,
         created_at: paste.created_at,
+        views: paste.views,
         protected: true,
       });
     }
@@ -142,6 +149,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       content: paste.content,
       language: paste.language,
       created_at: paste.created_at,
+      views: paste.views,
       protected: false,
     });
   } catch (err) {
@@ -182,6 +190,7 @@ router.post('/:id/unlock', async (req: Request, res: Response) => {
       content: paste.content,
       language: paste.language,
       created_at: paste.created_at,
+      views: paste.views,
       protected: true,
     });
   } catch (err) {
