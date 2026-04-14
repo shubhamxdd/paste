@@ -9,6 +9,7 @@ const PasteView = lazy(() => import('./pages/PasteView'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const GistNew = lazy(() => import('./pages/GistNew'));
 const GistView = lazy(() => import('./pages/GistView'));
+const Admin = lazy(() => import('./pages/Admin'));
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/gists/new" element={<GistNew />} />
               <Route path="/gists/:id" element={<GistView />} />
+              <Route path="/admin" element={<Admin />} />
             </Routes>
           </Suspense>
         </div>

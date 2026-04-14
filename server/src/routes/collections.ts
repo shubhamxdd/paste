@@ -14,6 +14,39 @@ interface CollectionDoc {
 const router = Router();
 const collections = () => getDb().collection<CollectionDoc>('collections');
 
+// GET /api/collections — list all collections with pagination
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+
+    const [docs, total] = await Promise.all([
+      collections()
+        .find({})
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .toArray(),
+      collections().countDocuments(),
+    ]);
+
+    return res.json({
+      collections: docs.map((d) => ({
+        id: d._id,
+        title: d.title,
+        paste_count: d.paste_ids.length,
+        created_at: d.created_at,
+      })),
+      total,
+      page,
+      limit,
+    });
+  } catch (err) {
+    logger.error({ err });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /api/collections — create a collection
 router.post('/', async (req: Request, res: Response) => {
   try {

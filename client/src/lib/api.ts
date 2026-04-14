@@ -31,6 +31,20 @@ export interface PasteListResponse {
   limit: number;
 }
 
+export interface CollectionListItem {
+  id: string;
+  title: string;
+  paste_count: number;
+  created_at: string;
+}
+
+export interface CollectionListResponse {
+  collections: CollectionListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface Collection {
   id: string;
   title: string;
@@ -125,6 +139,21 @@ export async function getCollection(id: string): Promise<Collection> {
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Gist not found');
+  }
+  return res.json();
+}
+
+export async function listCollections(params?: {
+  page?: number;
+  limit?: number;
+}): Promise<CollectionListResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const res = await fetch(`/api/collections?${query}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to list collections');
   }
   return res.json();
 }

@@ -12,6 +12,7 @@ A self-hosted pastebin with syntax highlighting, paraphrase-protected pastes, gi
 - Line highlighting — click any line to highlight it and update the URL hash (e.g. `/p/abc123#L42`)
 - Gists — group multiple pastes into a single shareable collection (up to 20 pastes)
 - Edit and delete gists (requires delete code)
+- Admin page at `/admin` — view, browse, and delete all pastes and gists (protected by delete code)
 - Full-text search across all pastes
 - Raw paste view
 - File upload support — drag and drop a file to populate the editor
@@ -235,10 +236,36 @@ Returns the raw paste content as `text/plain`. For protected pastes, pass `?para
 
 | Method | Endpoint | Description |
 |---|---|---|
+| `GET` | `/api/collections` | List all gists with pagination |
 | `POST` | `/api/collections` | Create a gist |
 | `GET` | `/api/collections/:id` | Get a gist with all its pastes |
 | `PATCH` | `/api/collections/:id` | Update title and/or pastes (requires `deleteCode`) |
 | `DELETE` | `/api/collections/:id` | Delete a gist (requires `deleteCode`) |
+
+---
+
+#### `GET /api/collections`
+
+List all gists with pagination.
+
+Query params: `page`, `limit` (max 50, default 20)
+
+Response `200`:
+```json
+{
+  "collections": [
+    {
+      "id": "xyz789",
+      "title": "My collection",
+      "paste_count": 3,
+      "created_at": "2024-07-01T10:00:00.000Z"
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "limit": 20
+}
+```
 
 ---
 
