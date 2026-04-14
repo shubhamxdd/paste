@@ -79,27 +79,227 @@ A self-hosted pastebin with syntax highlighting, paraphrase-protected pastes, gi
 
 ### Pastes
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/pastes` | List pastes. Supports `?q=`, `?page=`, `?limit=` |
-| `POST` | `/api/pastes` | Create a paste |
-| `GET` | `/api/pastes/:id` | Get a paste |
-| `DELETE` | `/api/pastes/:id` | Delete a paste (requires `deleteCode` in body) |
-| `POST` | `/api/pastes/:id/unlock` | Unlock a protected paste |
-| `GET` | `/api/pastes/:id/raw` | Get raw paste content |
+---
+
+#### `GET /api/pastes`
+
+List pastes with optional full-text search and pagination.
+
+Query params: `q`, `page`, `limit` (max 50, default 20)
+
+Response `200`:
+```json
+{
+  "pastes": [
+    {
+      "id": "abc123",
+      "title": "My snippet",
+      "language": "typescript",
+      "created_at": "2024-07-01T10:00:00.000Z",
+      "protected": false
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+---
+
+#### `POST /api/pastes`
+
+Create a paste.
+
+Body:
+```json
+{
+  "title": "My snippet",
+  "content": "console.log('hello')",
+  "language": "javascript",
+  "paraphrase": "optional-secret",
+  "customId": "optional-slug"
+}
+```
+
+Response `201`:
+```json
+{
+  "id": "abc123"
+}
+```
+
+---
+
+#### `GET /api/pastes/:id`
+
+Get a paste. If protected, `content` is omitted and `protected` is `true`.
+
+Response `200` (unprotected):
+```json
+{
+  "id": "abc123",
+  "title": "My snippet",
+  "content": "console.log('hello')",
+  "language": "javascript",
+  "created_at": "2024-07-01T10:00:00.000Z",
+  "protected": false
+}
+```
+
+Response `200` (protected):
+```json
+{
+  "id": "abc123",
+  "title": "My snippet",
+  "language": "javascript",
+  "created_at": "2024-07-01T10:00:00.000Z",
+  "protected": true
+}
+```
+
+---
+
+#### `POST /api/pastes/:id/unlock`
+
+Verify paraphrase and return the full content of a protected paste.
+
+Body:
+```json
+{
+  "paraphrase": "your-secret"
+}
+```
+
+Response `200`:
+```json
+{
+  "id": "abc123",
+  "title": "My snippet",
+  "content": "console.log('hello')",
+  "language": "javascript",
+  "created_at": "2024-07-01T10:00:00.000Z",
+  "protected": true
+}
+```
+
+Response `401`:
+```json
+{
+  "error": "Incorrect paraphrase"
+}
+```
+
+---
+
+#### `DELETE /api/pastes/:id`
+
+Delete a paste. Requires the server-side delete code.
+
+Body:
+```json
+{
+  "deleteCode": "your-delete-code"
+}
+```
+
+Response `200`:
+```json
+{
+  "success": true
+}
+```
+
+Response `401`:
+```json
+{
+  "error": "Incorrect delete code"
+}
+```
+
+---
+
+#### `GET /api/pastes/:id/raw`
+
+Returns the raw paste content as `text/plain`. For protected pastes, pass `?paraphrase=your-secret`.
+
+---
 
 ### Gists (Collections)
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/collections` | Create a gist |
-| `GET` | `/api/collections/:id` | Get a gist with all its pastes |
+---
+
+#### `POST /api/collections`
+
+Create a gist from existing pastes. Maximum 20 pastes per gist.
+
+Body:
+```json
+{
+  "title": "My collection",
+  "paste_ids": ["abc123", "def456"]
+}
+```
+
+Response `201`:
+```json
+{
+  "id": "xyz789"
+}
+```
+
+---
+
+#### `GET /api/collections/:id`
+
+Get a gist with all its pastes populated. Protected pastes within the collection omit `content`.
+
+Response `200`:
+```json
+{
+  "id": "xyz789",
+  "title": "My collection",
+  "created_at": "2024-07-01T10:00:00.000Z",
+  "pastes": [
+    {
+      "id": "abc123",
+      "title": "My snippet",
+      "content": "console.log('hello')",
+      "language": "javascript",
+      "created_at": "2024-07-01T10:00:00.000Z",
+      "protected": false
+    }
+  ]
+}
+```
+
+---
 
 ### Health
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Server health check with DB status and stats |
+---
+
+#### `GET /health`
+
+Response `200`:
+```json
+{
+  "status": "ok",
+  "uptime": 3600,
+  "mongodb": "connected",
+  "memory": {
+    "used_mb": 64,
+    "heap_used_mb": 32,
+    "heap_total_mb": 48
+  },
+  "node_version": "v20.14.0",
+  "stats": {
+    "pastes": 120,
+    "collections": 15
+  },
+  "timestamp": "2024-07-01T10:00:00.000Z"
+}
+```
 
 ## Local Development
 
