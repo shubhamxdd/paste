@@ -18,6 +18,52 @@ app.use(express.json());
 app.use('/api/pastes', pastesRouter);
 app.use('/api/collections', collectionsRouter);
 
+app.get('/api/stats', async (_req, res) => {
+  try {
+    const db = getDb();
+    const pastes = db.collection('pastes');
+    const collections = db.collection('collections');
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalPastes,
+      totalCollections,
+      totalViewsResult,
+      mostViewed,
+      topLanguages,
+      protectedCount,
+      recentCount,
+    ] = await Promise.all([
+      pastes.countDocuments(),
+      collections.countDocuments(),
+      pastes.aggregate([{ $group: { _id: null, total: { $sum: '$views' } } }]).toArray(),
+      pastes.find({}).sort({ views: -1 }).limit(1).project({ content: 0 }).toArray(),
+      pastes.aggregate([
+        { $group: { _id: '$language', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]).toArray(),
+      pastes.countDocuments({ paraphrase: { $ne: null } }),
+      pastes.countDocuments({ created_at: { $gte: sevenDaysAgo } }),
+    ]);
+
+    const top = mostViewed[0];
+
+    return res.json({
+      total_pastes: totalPastes,
+      total_collections: totalCollections,
+      total_views: totalViewsResult[0]?.total ?? 0,
+      protected_pastes: protectedCount,
+      pastes_last_7_days: recentCount,
+      most_viewed: top ? { id: top._id, title: top.title, language: top.language, views: top.views ?? 0 } : null,
+      top_languages: topLanguages.map((l) => ({ language: l._id as string, count: l.count as number })),
+    });
+  } catch (err) {
+    logger.error({ err });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/health', async (_req, res) => {
   try {
     const db = getDb();

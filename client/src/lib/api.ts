@@ -1,3 +1,19 @@
+export interface Stats {
+  total_pastes: number;
+  total_collections: number;
+  total_views: number;
+  protected_pastes: number;
+  pastes_last_7_days: number;
+  most_viewed: { id: string; title: string | null; language: string; views: number } | null;
+  top_languages: { language: string; count: number }[];
+}
+
+export async function fetchStats(): Promise<Stats> {
+  const res = await fetch('/api/stats');
+  if (!res.ok) throw new Error('Failed to fetch stats');
+  return res.json();
+}
+
 export interface Paste {
   id: string;
   title: string | null;

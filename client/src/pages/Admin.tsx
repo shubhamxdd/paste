@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   listPastes, deletePaste,
   listCollections, deleteCollection,
-  type PasteListItem, type CollectionListItem,
+  fetchStats,
+  type PasteListItem, type CollectionListItem, type Stats,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Lock, ExternalLink, Trash2, ChevronLeft, ChevronRight, Eye, Shield } from 'lucide-react';
+import { Lock, ExternalLink, Trash2, ChevronLeft, ChevronRight, Eye, Shield, FileCode, Layers, TrendingUp, ShieldCheck, CalendarDays } from 'lucide-react';
 
 const PAGE_SIZE = 20;
 const SESSION_KEY = 'admin_delete_code';
@@ -324,6 +325,118 @@ function GistsTab({ deleteCode }: { deleteCode: string }) {
   );
 }
 
+// ── Stats panel ───────────────────────────────────────────────────────────────
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+          {icon}
+          <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
+        </div>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatsPanel() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats()
+      .then(setStats)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}><CardContent className="pt-5 pb-4 space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-7 w-16" /></CardContent></Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
+  return (
+    <div className="space-y-4 mb-8">
+      {/* KPI row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard icon={<FileCode className="h-3.5 w-3.5" />} label="Total Pastes" value={stats.total_pastes.toLocaleString()} />
+        <StatCard icon={<Layers className="h-3.5 w-3.5" />} label="Total Gists" value={stats.total_collections.toLocaleString()} />
+        <StatCard icon={<Eye className="h-3.5 w-3.5" />} label="Total Views" value={stats.total_views.toLocaleString()} />
+        <StatCard icon={<ShieldCheck className="h-3.5 w-3.5" />} label="Protected" value={stats.protected_pastes.toLocaleString()} />
+        <StatCard icon={<CalendarDays className="h-3.5 w-3.5" />} label="Last 7 Days" value={stats.pastes_last_7_days.toLocaleString()} />
+      </div>
+
+      {/* Most viewed + top languages */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-3">
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium uppercase tracking-wide">Most Viewed</span>
+            </div>
+            {stats.most_viewed ? (
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <Link to={`/p/${stats.most_viewed.id}`} target="_blank" className="text-sm font-semibold hover:underline truncate block">
+                    {stats.most_viewed.title || 'Untitled'}
+                  </Link>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge variant="secondary" className="font-mono text-xs">{stats.most_viewed.language}</Badge>
+                    <span className="text-xs text-muted-foreground font-mono">/p/{stats.most_viewed.id}</span>
+                  </div>
+                </div>
+                <span className="text-xl font-bold shrink-0">{stats.most_viewed.views.toLocaleString()}</span>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No pastes yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-3">
+              <FileCode className="h-3.5 w-3.5" />
+              <span className="text-xs font-medium uppercase tracking-wide">Top Languages</span>
+            </div>
+            {stats.top_languages.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pastes yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {stats.top_languages.map(({ language, count }) => {
+                  const pct = stats.total_pastes > 0 ? Math.round((count / stats.total_pastes) * 100) : 0;
+                  return (
+                    <div key={language} className="flex items-center gap-2">
+                      <span className="text-xs font-mono w-24 truncate shrink-0">{language}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-foreground/60" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-muted-foreground w-8 text-right shrink-0">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 // ── Main admin page ───────────────────────────────────────────────────────────
 export default function Admin() {
   const [deleteCode, setDeleteCode] = useState<string | null>(
@@ -350,6 +463,8 @@ export default function Admin() {
           Sign out
         </Button>
       </div>
+
+      <StatsPanel />
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-border">
