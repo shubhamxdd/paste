@@ -12,7 +12,7 @@ A self-hosted pastebin with syntax highlighting, paraphrase-protected pastes, gi
 - Line highlighting — click any line to highlight it and update the URL hash (e.g. `/p/abc123#L42`)
 - Gists — group multiple pastes into a single shareable collection (up to 20 pastes)
 - Edit and delete gists (requires delete code)
-- Admin page at `/admin` — view, browse, and delete all pastes and gists (protected by delete code)
+- Admin page at `/admin` — metrics dashboard (total views, most viewed paste, top languages, protected count, recent activity) plus paginated browse and delete for all pastes and gists (protected by delete code)
 - Full-text search across all pastes
 - Raw paste view
 - File upload support — drag and drop a file to populate the editor
