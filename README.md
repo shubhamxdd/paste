@@ -364,6 +364,40 @@ Response `200`:
 
 ---
 
+### Stats
+
+---
+
+#### `GET /api/stats`
+
+Returns aggregate metrics across all pastes and collections. Used by the admin dashboard.
+
+Response `200`:
+```json
+{
+  "total_pastes": 120,
+  "total_collections": 15,
+  "total_views": 4821,
+  "protected_pastes": 8,
+  "pastes_last_7_days": 23,
+  "most_viewed": {
+    "id": "abc123",
+    "title": "My snippet",
+    "language": "typescript",
+    "views": 310
+  },
+  "top_languages": [
+    { "language": "javascript", "count": 42 },
+    { "language": "typescript", "count": 38 },
+    { "language": "python", "count": 21 },
+    { "language": "bash", "count": 10 },
+    { "language": "json", "count": 9 }
+  ]
+}
+```
+
+---
+
 ### Health
 
 ---
